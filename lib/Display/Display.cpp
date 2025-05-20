@@ -1,5 +1,7 @@
 #include <Display.h>
 
+const char* VERSION = "v1.1";
+
 Display::Display():
     display(TFT_CS, TFT_DC, TFT_RESET)
 {}
@@ -67,8 +69,10 @@ void Display::showLoadingScreen() {
     int index = 0;
     while (index < 40) {
         display.fillScreen(ST77XX_BLUE);
-        drawCenteredText("BlueMute v1.0", -index);
-        delay(5);
+        char title[32];
+        snprintf(title, sizeof(title), "BlueMute %s", VERSION);
+        drawCenteredText(title, -index);
+        delay(2);
         index++;
     }
 }
@@ -77,7 +81,9 @@ void Display::showMessage(const char* message) {
     display.fillScreen(ST77XX_BLUE);
     display.setTextColor(ST77XX_WHITE);
     display.setTextSize(2);
-    drawCenteredText("BlueMute v1.0", -40);
+    char title[32];
+    snprintf(title, sizeof(title), "BlueMute %s", VERSION);
+    drawCenteredText(title, -40);
 
     // separate the message into lines by "\n"
     char* line = strtok((char*)message, "\n");

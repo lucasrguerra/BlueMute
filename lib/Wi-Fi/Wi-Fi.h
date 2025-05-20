@@ -14,8 +14,9 @@ public:
     void startJamming();
     void stopJamming();
     void performScan();
-    void executeJamming();
-    int findedAPs();
+    void executeJamming(int attack_mode);
+    int foundAPs();
+    char* getSSID(int index);
 };
 
 #endif
