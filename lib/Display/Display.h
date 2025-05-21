@@ -14,6 +14,8 @@
 #define SCREEN_WIDTH 240
 #define SCREEN_HEIGHT 135
 
+const char* VERSION = "v1.1.1";
+
 class Display {
     private:
         Adafruit_ST7789 display;

@@ -79,22 +79,24 @@ void handleButtonPress() {
 		
 		wifi.performScan();
 		int number_of_aps = wifi.foundAPs();
-		char* message = (char*)malloc(50);
-		sprintf(message, "Jamming Wi-Fi\n%d APs encontrados", number_of_aps);
-		display.showMessage(message);
+		String message = String("Jamming Wi-Fi\n") + String(number_of_aps) + String(" APs encontrados");
+		display.showMessage(message.c_str());
 
 		delay(3000);
 		bool is_selected = false;
 		unsigned int ap_index = 0;
+		int number_of_options = number_of_aps + 1;
 		while (!is_selected) {
-			char* message = (char*)malloc(100);
+			int display_index = ap_index + 1;
+			char* ssid = wifi.getSSID(ap_index);
+
+			String message = String("Selecione o AP\n");
 			if (ap_index < number_of_aps) {
-				sprintf(message, "Selecione o AP\n%d/%d\n%s", (ap_index + 1), (number_of_aps + 1), wifi.getSSID(ap_index));
+				message += String(display_index) + String("/") + String(number_of_options) + String("\n") + String(ssid);
 			} else {
-				sprintf(message, "Selecione o AP\n%d/%d\nTodos os APs", (ap_index + 1), (number_of_aps + 1));
+				message += String(display_index) + String("/") + String(number_of_options) + String("\nTodos os APs");
 			}
-			display.showMessage(message);
-			free(message);
+			display.showMessage(message.c_str());
 			
 			while (digitalRead(MODE_BUTTON) == LOW) { delay(10); }
 			unsigned long press_duration = millis();
@@ -103,17 +105,18 @@ void handleButtonPress() {
 			bool is_long_press = (press_duration > 1000);
 
 			if (!is_long_press) {
-				ap_index = (ap_index + 1) % (number_of_aps + 1);
+				ap_index = display_index % number_of_options;
 			} else {
 				is_selected = true;
 				if (ap_index < number_of_aps) {
 					wifi_attack_mode = ap_index;
-					Serial.printf("Jamming Wi-Fi %d\n", wifi_attack_mode);
-					display.showMessage("Jamming Wi-Fi");
+					Serial.printf("Jamming Wi-Fi\n%s", ssid);
+					String msg = "Jamming Wi-Fi\n" + String(ssid);
+					display.showMessage(msg.c_str());
 				} else {
 					wifi_attack_mode = -1;
-					Serial.println("Jamming Wi-Fi (todos)");
-					display.showMessage("Jamming Wi-Fi (todos)");
+					Serial.println("Jamming Wi-Fi\nTodos os APs");
+					display.showMessage("Jamming Wi-Fi\nTodos os APs");
 				}
 			}
 		}

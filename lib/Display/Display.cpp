@@ -1,7 +1,5 @@
 #include <Display.h>
 
-const char* VERSION = "v1.1";
-
 Display::Display():
     display(TFT_CS, TFT_DC, TFT_RESET)
 {}
